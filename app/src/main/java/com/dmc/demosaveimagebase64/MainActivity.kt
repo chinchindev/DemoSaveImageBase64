@@ -3,20 +3,16 @@ package com.dmc.demosaveimagebase64
 import android.Manifest
 import android.R.attr.rotation
 import android.app.Activity
-import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
-import android.provider.Settings
 import android.util.Base64
 import android.util.Log
 import android.widget.Button
@@ -24,14 +20,12 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.*
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-
 
 class MainActivity : AppCompatActivity() {
 
@@ -80,11 +74,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolve(imageURI: Uri?) = CoroutineScope(Dispatchers.IO + handleException).launch {
-        val bitmap = getBitmapFromUri(imageURI)
         val encodedString = Base64.encodeToString(readBytesFromFile(imageURI), Base64.NO_WRAP)
-//        Log.d("chinhdm", encodedString.toString())
         val bytesArray = Base64.decode(encodedString, Base64.NO_WRAP)
-        val bitmapByteArray = BitmapFactory.decodeByteArray(bytesArray, 0, bytesArray.size)
+//        val bytesArray = BitmapFactory.decodeByteArray(bytesArray, 0, bytesArray.size)
 
         val root = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).toString()
         val myDir = File(root)
@@ -100,7 +92,9 @@ class MainActivity : AppCompatActivity() {
         Log.i("LOAD", root + fname)
         file.writeBytes(bytesArray)
 //        file.writeBitmap(bitmapByteArray, Bitmap.CompressFormat.JPEG, 100)
+
         withContext(Dispatchers.Main) {
+            val bitmap = getBitmapFromUri(imageURI)
             findViewById<ImageView>(R.id.imageView).setImageBitmap(bitmap)
             Toast.makeText(this@MainActivity, "Save image success", Toast.LENGTH_SHORT).show()
         }
@@ -128,27 +122,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun encodeToBase64(image: Bitmap, flag: Int): String {
+    private fun encodeToBase64(image: Bitmap): String {
         val baos = ByteArrayOutputStream()
         image.compress(Bitmap.CompressFormat.JPEG, 100, baos)
         val b = baos.toByteArray()
-        var encodedString = Base64.encodeToString(b, flag)
-        encodedString = encodedString.replace("\n".toRegex(), "").replace("\r", "")
-        return encodedString
+        return Base64.encodeToString(b, Base64.NO_WRAP)
     }
 
     private fun decodeBase64(input: String): Bitmap? {
-        val decodedByte = Base64.decode(input, 0)
+        val decodedByte = Base64.decode(input, Base64.NO_WRAP)
         return BitmapFactory.decodeByteArray(decodedByte, 0, decodedByte.size)
     }
 
-    private fun exifToDegrees(exifOrientation: Int): Int {
-        return when (exifOrientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> 90
-            ExifInterface.ORIENTATION_ROTATE_180 -> 180
-            ExifInterface.ORIENTATION_ROTATE_270 -> 270
-            else -> 0
-        }
+    private fun exifToDegrees(exifOrientation: Int): Int = when (exifOrientation) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> 90
+        ExifInterface.ORIENTATION_ROTATE_180 -> 180
+        ExifInterface.ORIENTATION_ROTATE_270 -> 270
+        else -> 0
     }
 
     private fun getBitmapFromUri(uri: Uri?): Bitmap? {
